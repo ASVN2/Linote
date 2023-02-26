@@ -1,0 +1,31 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    match /notes/{noteId} {
+      // Allow only authenticated users to read or delete notes
+      allow read, delete: if request.auth != null && request.auth.uid == resource.data.uid;
+      
+      // Allow only authenticated users to create new notes
+      allow create: if request.auth != null;
+      
+      // Allow users to update their own notes
+      allow update: if request.auth != null && request.auth.uid == resource.data.uid;
+      
+      // Allow only authorized users to read and list all notes
+      allow list, get: if request.auth != null;
+      
+      // Define the structure of each note document
+      function validNote() {
+        return request.resource.data.keys().hasAll(['title', 'note', 'uid']) &&
+            request.resource.data.title is string &&
+            request.resource.data.note is string &&
+            request.resource.data.uid == request.auth.uid;
+      }
+      
+      // Only allow notes that match the defined structure
+      allow create: if validNote();
+      allow update: if validNote();
+    }
+  }
+}
